@@ -18,6 +18,7 @@ export default function Dish2DPlacement() {
 
   const [draggedDishId, setDraggedDishId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // 背景のサイズ（cm）
@@ -100,7 +101,7 @@ export default function Dish2DPlacement() {
     });
   };
 
-  // ドラッグ開始
+  // ドラッグ開始（マウス）
   const handleDragStart = (e: React.MouseEvent, dishId: string) => {
     const placed = placedDishes2D.find((pd) => pd.dishId === dishId);
     if (!placed) return;
@@ -112,7 +113,7 @@ export default function Dish2DPlacement() {
     });
   };
 
-  // ドラッグ中
+  // ドラッグ中（マウス）
   const handleDragMove = (e: React.MouseEvent) => {
     if (!draggedDishId) return;
 
@@ -125,8 +126,41 @@ export default function Dish2DPlacement() {
     updatePlacedDish2D(draggedDishId, { x, y });
   };
 
-  // ドラッグ終了
+  // ドラッグ終了（マウス）
   const handleDragEnd = () => {
+    setDraggedDishId(null);
+  };
+
+  // タッチ開始
+  const handleTouchStart = (e: React.TouchEvent, dishId: string) => {
+    const placed = placedDishes2D.find((pd) => pd.dishId === dishId);
+    if (!placed) return;
+
+    const touch = e.touches[0];
+    setDraggedDishId(dishId);
+    setDragOffset({
+      x: touch.clientX - placed.x,
+      y: touch.clientY - placed.y,
+    });
+  };
+
+  // タッチ移動
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!draggedDishId) return;
+    e.preventDefault();
+
+    const touch = e.touches[0];
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const x = touch.clientX - rect.left - dragOffset.x;
+    const y = touch.clientY - rect.top - dragOffset.y;
+
+    updatePlacedDish2D(draggedDishId, { x, y });
+  };
+
+  // タッチ終了
+  const handleTouchEnd = () => {
     setDraggedDishId(null);
   };
 
@@ -149,9 +183,19 @@ export default function Dish2DPlacement() {
   };
 
   return (
-    <div className="flex h-screen">
-      {/* サイドバー */}
-      <div className="w-80 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 overflow-y-auto">
+    <div className="flex flex-col md:flex-row h-screen relative">
+      {/* サイドバー（デスクトップ: 左側、モバイル: 下部ドロワー） */}
+      <div className={`
+        md:w-80 md:relative md:translate-y-0
+        fixed bottom-0 left-0 right-0 z-20
+        transform transition-transform duration-300
+        ${isSidebarOpen ? 'translate-y-0' : 'translate-y-full'}
+        md:transform-none
+        bg-white dark:bg-zinc-900
+        border-r md:border-r border-t md:border-t-0 border-zinc-200 dark:border-zinc-800
+        overflow-y-auto
+        max-h-[70vh] md:max-h-none
+      `}>
         <div className="p-4 space-y-6">
           {/* 背景画像アップロード */}
           <div>
@@ -267,6 +311,20 @@ export default function Dish2DPlacement() {
 
       {/* キャンバスエリア */}
       <div className="flex-1 bg-zinc-100 dark:bg-zinc-950 relative overflow-hidden">
+        {/* モバイル用: サイドバー開閉ボタン */}
+        <button
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="md:hidden fixed bottom-4 right-4 z-30 bg-blue-600 text-white p-4 rounded-full shadow-lg"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {isSidebarOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
+        </button>
+
         {!backgroundImage ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center max-w-md p-8">
@@ -296,6 +354,8 @@ export default function Dish2DPlacement() {
             onMouseMove={handleDragMove}
             onMouseUp={handleDragEnd}
             onMouseLeave={handleDragEnd}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
             style={{
               backgroundImage: `url(${backgroundImage})`,
               backgroundSize: 'contain',
@@ -323,7 +383,7 @@ export default function Dish2DPlacement() {
               return (
                 <div
                   key={placed.dishId}
-                  className="absolute cursor-move hover:ring-2 hover:ring-blue-500 rounded"
+                  className="absolute cursor-move hover:ring-2 hover:ring-blue-500 rounded touch-none"
                   style={{
                     left: placed.x,
                     top: placed.y,
@@ -332,6 +392,7 @@ export default function Dish2DPlacement() {
                     height: heightPx,
                   }}
                   onMouseDown={(e) => handleDragStart(e, placed.dishId)}
+                  onTouchStart={(e) => handleTouchStart(e, placed.dishId)}
                 >
                   <img
                     src={dish.processedImage}

@@ -84,33 +84,24 @@ export default function Home() {
 
         {/* 注意事項 */}
         <div className="mt-12 space-y-4">
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
-            <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">
-              🤖 Meta Quest / Android（WebXR AR）
-            </h3>
-            <p className="text-sm text-blue-800 dark:text-blue-400">
-              Meta Quest や Android Chrome でWebXR AR機能が利用できます。
-              空間認識で机の平面を検出し、実寸サイズで器を3D配置できます。
-            </p>
-          </div>
-
           <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-6">
             <h3 className="font-semibold text-purple-900 dark:text-purple-300 mb-2">
-              📱 iPhone / iPad（カメラAR）
+              📱 iPhone / iPad
             </h3>
             <p className="text-sm text-purple-800 dark:text-purple-400">
-              iOSデバイスではカメラを使った簡易ARモードが利用できます。
-              カメラ映像に器を重ねて表示し、ドラッグで自由に配置できます。
+              iOSデバイスではカメラARモードが利用できます。
+              カメラ映像に器を重ねて表示し、タップで配置、ドラッグで自由に移動できます。
+              2D配置モードへの切り替えも可能です。
             </p>
           </div>
 
           <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6">
             <h3 className="font-semibold text-green-900 dark:text-green-300 mb-2">
-              💻 PC（2D配置モード）
+              💻 PC / その他のデバイス
             </h3>
             <p className="text-sm text-green-800 dark:text-green-400">
-              PCブラウザでは2D配置モードが利用できます。
-              机の写真（横100cm×縦70cm想定）を背景にして、器を自由に配置・調整できます。
+              PCやAndroidなどのデバイスでは2D配置モードが利用できます。
+              机の写真（横100cm×縦70cm想定）を背景にアップロードして、器を自由に配置・調整できます。
             </p>
           </div>
         </div>
