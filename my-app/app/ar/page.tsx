@@ -25,6 +25,7 @@ function DishPlane({
   useEffect(() => {
     const loader = new THREE.TextureLoader();
     loader.load(imageUrl, (loadedTexture) => {
+      loadedTexture.colorSpace = THREE.SRGBColorSpace;
       setTexture(loadedTexture);
     });
   }, [imageUrl]);
@@ -38,7 +39,12 @@ function DishPlane({
   return (
     <mesh position={position} rotation={[-Math.PI / 2, 0, 0]}>
       <planeGeometry args={[widthM, heightM]} />
-      <meshBasicMaterial map={texture} transparent={true} side={THREE.DoubleSide} />
+      <meshBasicMaterial
+        map={texture}
+        transparent={true}
+        side={THREE.DoubleSide}
+        alphaTest={0.1}
+      />
     </mesh>
   );
 }
@@ -82,35 +88,55 @@ function ARScene() {
 }
 
 export default function ARPage() {
+  console.log('ARPage component rendered');
+
   const router = useRouter();
   const { selectedDishes, dishes } = useDishStore();
+
+  console.log('Selected dishes:', selectedDishes);
+  console.log('All dishes:', dishes);
+
   const [isARSupported, setIsARSupported] = useState<boolean | null>(null);
   const [mode, setMode] = useState<'ar' | '2d'>('ar'); // 'ar' or '2d'
   const [xrStore] = useState(() => createXRStore());
 
   useEffect(() => {
+    console.log('useEffect started, selectedDishes:', selectedDishes);
+
     // 選択された器がない場合は戻る
     if (selectedDishes.length === 0) {
+      console.log('No dishes selected, redirecting to /dishes');
       router.push('/dishes');
       return;
     }
 
+    console.log('Checking WebXR support...');
+    console.log('navigator.xr exists:', 'xr' in navigator);
+
     // WebXRのサポート確認
     if ('xr' in navigator) {
+      console.log('WebXR API detected');
       navigator.xr
         ?.isSessionSupported('immersive-ar')
         .then((supported) => {
+          console.log('WebXR immersive-ar supported:', supported);
           setIsARSupported(supported);
-          // サポートされていない場合は自動的に2Dモードに切り替え
+          // PCの場合は2Dモードをデフォルトにする（手動切り替え可能）
+          // モバイルの場合は自動でARモードを試す
           if (!supported) {
+            console.log('Setting mode to 2D');
             setMode('2d');
+          } else {
+            console.log('AR is supported, staying in AR mode');
           }
         })
-        .catch(() => {
+        .catch((error) => {
+          console.error('WebXR support check error:', error);
           setIsARSupported(false);
           setMode('2d');
         });
     } else {
+      console.log('WebXR API not found in navigator');
       setIsARSupported(false);
       setMode('2d');
     }
@@ -137,9 +163,16 @@ export default function ARPage() {
               ← 戻る
             </button>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                2D配置モード
-              </span>
+              <div>
+                <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                  2D配置モード
+                </span>
+                {isARSupported !== null && (
+                  <div className="text-xs text-zinc-400 dark:text-zinc-500">
+                    WebXR AR: {isARSupported ? '対応' : '非対応'}
+                  </div>
+                )}
+              </div>
               {isARSupported && (
                 <button
                   onClick={() => setMode('ar')}
@@ -147,6 +180,11 @@ export default function ARPage() {
                 >
                   ARモードに切替
                 </button>
+              )}
+              {!isARSupported && isARSupported !== null && (
+                <div className="text-xs text-zinc-400 dark:text-zinc-500 max-w-xs">
+                  このブラウザはWebXR ARに対応していません
+                </div>
               )}
             </div>
           </div>
