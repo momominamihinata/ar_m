@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Canvas } from '@react-three/fiber';
-import { XR } from '@react-three/xr';
+import { XR, createXRStore } from '@react-three/xr';
 import * as THREE from 'three';
 import { useDishStore } from '@/store/dishStore';
 import Dish2DPlacement from '@/components/Dish2DPlacement';
@@ -86,6 +86,7 @@ export default function ARPage() {
   const { selectedDishes, dishes } = useDishStore();
   const [isARSupported, setIsARSupported] = useState<boolean | null>(null);
   const [mode, setMode] = useState<'ar' | '2d'>('ar'); // 'ar' or '2d'
+  const [xrStore] = useState(() => createXRStore());
 
   useEffect(() => {
     // 選択された器がない場合は戻る
@@ -116,7 +117,8 @@ export default function ARPage() {
   }, [selectedDishes, router]);
 
   const handleStartAR = () => {
-    // ARセッションの開始はXRコンポーネントが自動で処理
+    // XRStoreを使ってARセッションを開始
+    xrStore.enterAR();
   };
 
   const selectedDishObjects = dishes.filter((d) => selectedDishes.includes(d.id));
@@ -199,7 +201,7 @@ export default function ARPage() {
         </div>
       ) : (
         <Canvas>
-          <XR>
+          <XR store={xrStore}>
             <ARScene />
           </XR>
         </Canvas>
