@@ -86,11 +86,21 @@ export default function Home() {
         <div className="mt-12 space-y-4">
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
             <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">
-              📱 モバイル（AR対応）
+              🤖 Meta Quest / Android（WebXR AR）
             </h3>
             <p className="text-sm text-blue-800 dark:text-blue-400">
-              Android Chrome または iOS Safari (iOS 15.4+) でWebXR AR機能が利用できます。
-              カメラで机を映して、リアルタイムに器を配置できます。
+              Meta Quest や Android Chrome でWebXR AR機能が利用できます。
+              空間認識で机の平面を検出し、実寸サイズで器を3D配置できます。
+            </p>
+          </div>
+
+          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-6">
+            <h3 className="font-semibold text-purple-900 dark:text-purple-300 mb-2">
+              📱 iPhone / iPad（カメラAR）
+            </h3>
+            <p className="text-sm text-purple-800 dark:text-purple-400">
+              iOSデバイスではカメラを使った簡易ARモードが利用できます。
+              カメラ映像に器を重ねて表示し、ドラッグで自由に配置できます。
             </p>
           </div>
 

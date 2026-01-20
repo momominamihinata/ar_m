@@ -7,6 +7,8 @@ import { XR, createXRStore } from '@react-three/xr';
 import * as THREE from 'three';
 import { useDishStore } from '@/store/dishStore';
 import Dish2DPlacement from '@/components/Dish2DPlacement';
+import IOSSimpleAR from '@/components/IOSSimpleAR';
+import { isIOS, getDeviceType } from '@/lib/device-detection';
 
 // 器を表示するコンポーネント
 function DishPlane({
@@ -88,18 +90,14 @@ function ARScene() {
 }
 
 export default function ARPage() {
-  console.log('ARPage component rendered');
-
   const router = useRouter();
   const { selectedDishes, dishes } = useDishStore();
 
-  console.log('Selected dishes:', selectedDishes);
-  console.log('All dishes:', dishes);
-
   const [isARSupported, setIsARSupported] = useState<boolean | null>(null);
-  const [mode, setMode] = useState<'ar' | '2d'>('ar'); // 'ar' or '2d'
+  const [mode, setMode] = useState<'ar' | '2d' | 'ios-simple-ar'>('ar'); // モード
   const [xrStore] = useState(() => createXRStore());
   const [diagnostics, setDiagnostics] = useState<string[]>([]);
+  const [deviceType, setDeviceType] = useState<'ios' | 'android' | 'desktop'>('desktop');
 
   useEffect(() => {
     const logs: string[] = [];
@@ -114,10 +112,25 @@ export default function ARPage() {
       return;
     }
 
+    // デバイスタイプを検出
+    const detectedDeviceType = getDeviceType();
+    setDeviceType(detectedDeviceType);
+    logs.push(`Device type: ${detectedDeviceType}`);
+
     // 診断情報を収集
     logs.push(`URL: ${typeof window !== 'undefined' ? window.location.href : 'SSR'}`);
     logs.push(`Protocol: ${typeof window !== 'undefined' ? window.location.protocol : 'SSR'}`);
     logs.push(`User Agent: ${typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 50) + '...' : 'SSR'}`);
+
+    // iOSの場合は簡易ARモードに切り替え
+    if (detectedDeviceType === 'ios') {
+      console.log('iOS detected, using simple AR mode');
+      logs.push('iOS detected - using camera-based AR');
+      setDiagnostics(logs);
+      setIsARSupported(false);
+      setMode('ios-simple-ar');
+      return;
+    }
 
     console.log('Checking WebXR support...');
     console.log('navigator.xr exists:', 'xr' in navigator);
@@ -169,6 +182,32 @@ export default function ARPage() {
 
   const selectedDishObjects = dishes.filter((d) => selectedDishes.includes(d.id));
 
+  // iOS簡易ARモードの場合
+  if (mode === 'ios-simple-ar') {
+    return (
+      <div className="h-screen flex flex-col">
+        {/* ヘッダー */}
+        <div className="absolute top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-black/70 to-transparent">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => router.push('/dishes')}
+              className="text-white hover:text-zinc-300"
+            >
+              ← 戻る
+            </button>
+            <button
+              onClick={() => setMode('2d')}
+              className="px-4 py-2 bg-white/20 text-white text-sm rounded backdrop-blur hover:bg-white/30"
+            >
+              2Dモードに切替
+            </button>
+          </div>
+        </div>
+        <IOSSimpleAR />
+      </div>
+    );
+  }
+
   // 2Dモードの場合
   if (mode === '2d') {
     return (
@@ -193,13 +232,26 @@ export default function ARPage() {
                       WebXR AR: {isARSupported ? '対応' : '非対応'}
                     </div>
                   )}
+                  {deviceType === 'ios' && (
+                    <div className="text-xs text-zinc-400 dark:text-zinc-500">
+                      iOS: カメラARモード利用可能
+                    </div>
+                  )}
                 </div>
                 {isARSupported && (
                   <button
                     onClick={() => setMode('ar')}
                     className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
                   >
-                    ARモードに切替
+                    WebXR ARに切替
+                  </button>
+                )}
+                {deviceType === 'ios' && (
+                  <button
+                    onClick={() => setMode('ios-simple-ar')}
+                    className="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                  >
+                    カメラARに切替
                   </button>
                 )}
               </div>
