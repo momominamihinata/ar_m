@@ -99,9 +99,13 @@ export default function ARPage() {
   const [isARSupported, setIsARSupported] = useState<boolean | null>(null);
   const [mode, setMode] = useState<'ar' | '2d'>('ar'); // 'ar' or '2d'
   const [xrStore] = useState(() => createXRStore());
+  const [diagnostics, setDiagnostics] = useState<string[]>([]);
 
   useEffect(() => {
+    const logs: string[] = [];
+
     console.log('useEffect started, selectedDishes:', selectedDishes);
+    logs.push(`Selected dishes: ${selectedDishes.length}`);
 
     // 選択された器がない場合は戻る
     if (selectedDishes.length === 0) {
@@ -110,33 +114,49 @@ export default function ARPage() {
       return;
     }
 
+    // 診断情報を収集
+    logs.push(`URL: ${typeof window !== 'undefined' ? window.location.href : 'SSR'}`);
+    logs.push(`Protocol: ${typeof window !== 'undefined' ? window.location.protocol : 'SSR'}`);
+    logs.push(`User Agent: ${typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 50) + '...' : 'SSR'}`);
+
     console.log('Checking WebXR support...');
     console.log('navigator.xr exists:', 'xr' in navigator);
+    logs.push(`navigator.xr exists: ${'xr' in navigator}`);
 
     // WebXRのサポート確認
     if ('xr' in navigator) {
       console.log('WebXR API detected');
+      logs.push('WebXR API detected');
+
       navigator.xr
         ?.isSessionSupported('immersive-ar')
         .then((supported) => {
           console.log('WebXR immersive-ar supported:', supported);
+          logs.push(`WebXR immersive-ar supported: ${supported}`);
+          setDiagnostics(logs);
           setIsARSupported(supported);
-          // PCの場合は2Dモードをデフォルトにする（手動切り替え可能）
-          // モバイルの場合は自動でARモードを試す
+
           if (!supported) {
             console.log('Setting mode to 2D');
+            logs.push('Reason: AR not supported - switching to 2D mode');
             setMode('2d');
           } else {
             console.log('AR is supported, staying in AR mode');
+            logs.push('AR mode active');
           }
         })
         .catch((error) => {
           console.error('WebXR support check error:', error);
+          logs.push(`WebXR error: ${error.message}`);
+          setDiagnostics(logs);
           setIsARSupported(false);
           setMode('2d');
         });
     } else {
       console.log('WebXR API not found in navigator');
+      logs.push('WebXR API not found in navigator');
+      logs.push('Reason: HTTPS required for WebXR (or localhost)');
+      setDiagnostics(logs);
       setIsARSupported(false);
       setMode('2d');
     }
@@ -155,38 +175,51 @@ export default function ARPage() {
       <div className="h-screen flex flex-col">
         {/* ヘッダー */}
         <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => router.push('/dishes')}
-              className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
-            >
-              ← 戻る
-            </button>
-            <div className="flex items-center gap-4">
-              <div>
-                <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                  2D配置モード
-                </span>
-                {isARSupported !== null && (
-                  <div className="text-xs text-zinc-400 dark:text-zinc-500">
-                    WebXR AR: {isARSupported ? '対応' : '非対応'}
-                  </div>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => router.push('/dishes')}
+                className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+              >
+                ← 戻る
+              </button>
+              <div className="flex items-center gap-4">
+                <div>
+                  <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                    2D配置モード
+                  </span>
+                  {isARSupported !== null && (
+                    <div className="text-xs text-zinc-400 dark:text-zinc-500">
+                      WebXR AR: {isARSupported ? '対応' : '非対応'}
+                    </div>
+                  )}
+                </div>
+                {isARSupported && (
+                  <button
+                    onClick={() => setMode('ar')}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                  >
+                    ARモードに切替
+                  </button>
                 )}
               </div>
-              {isARSupported && (
-                <button
-                  onClick={() => setMode('ar')}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-                >
-                  ARモードに切替
-                </button>
-              )}
-              {!isARSupported && isARSupported !== null && (
-                <div className="text-xs text-zinc-400 dark:text-zinc-500 max-w-xs">
-                  このブラウザはWebXR ARに対応していません
-                </div>
-              )}
             </div>
+
+            {/* 診断情報 */}
+            {diagnostics.length > 0 && (
+              <details className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded p-3">
+                <summary className="text-xs font-medium text-yellow-800 dark:text-yellow-300 cursor-pointer">
+                  診断情報（タップして表示）
+                </summary>
+                <div className="mt-2 space-y-1">
+                  {diagnostics.map((log, index) => (
+                    <div key={index} className="text-xs text-yellow-700 dark:text-yellow-400 font-mono">
+                      {log}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
           </div>
         </div>
         <Dish2DPlacement />
