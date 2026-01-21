@@ -1,8 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #d8ba9d;
+  --foreground: #6f3f1e;
+
+  /* カスタムカラーパレット */
+  --color-beige: #d8ba9d;        /* メインカラー（ベージュ） */
+  --color-beige-dark: #c39665;   /* サブカラー1（濃いベージュ） */
+  --color-brown: #915524;        /* サブカラー2（明るい茶） */
+  --color-brown-dark: #6f3f1e;   /* アクセントカラー1（暗い茶） */
+  --color-text-light: #f4f4f4;   /* 文字の色（白） */
 }
 
 @theme inline {
@@ -10,13 +17,13 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* カスタムカラーをTailwindで使えるように定義 */
+  --color-beige: #d8ba9d;
+  --color-beige-dark: #c39665;
+  --color-brown: #915524;
+  --color-brown-dark: #6f3f1e;
+  --color-text-light: #f4f4f4;
 }
 
 body {

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useDishStore } from '@/store/dishStore';
-import { fileToDataURL } from '@/lib/image-processing';
+import { fileToDataURL, cropToAspectRatio } from '@/lib/image-processing';
 
 export default function Dish2DPlacement() {
   const {
@@ -19,16 +19,23 @@ export default function Dish2DPlacement() {
   const [draggedDishId, setDraggedDishId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [containerDimensions, setContainerDimensions] = useState<{
+    width: number;
+    height: number;
+    offsetX: number;
+    offsetY: number;
+    pixelsPerCm: number;
+  } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // 背景のサイズ（cm）
-  const BACKGROUND_WIDTH_CM = 100;
-  const BACKGROUND_HEIGHT_CM = 70;
+  const BACKGROUND_WIDTH_CM = 60;
+  const BACKGROUND_HEIGHT_CM = 40;
 
   const selectedDishObjects = dishes.filter((d) => selectedDishes.includes(d.id));
 
   // 背景画像の表示サイズとピクセル/cm比率を計算
-  const getBackgroundDimensions = () => {
+  const getBackgroundDimensions = useCallback(() => {
     if (!containerRef.current) return null;
 
     const containerWidth = containerRef.current.offsetWidth;
@@ -66,7 +73,22 @@ export default function Dish2DPlacement() {
       offsetY,
       pixelsPerCm,
     };
-  };
+  }, []);
+
+  // useEffectでコンテナのサイズを計算して状態に保存
+  useEffect(() => {
+    const updateDimensions = () => {
+      const dimensions = getBackgroundDimensions();
+      setContainerDimensions(dimensions);
+    };
+
+    // 初回計算
+    updateDimensions();
+
+    // ウィンドウリサイズ時に再計算
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, [backgroundImage, getBackgroundDimensions]); // backgroundImageが変わった時も再計算
 
   // 背景画像アップロード
   const handleBackgroundUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,8 +96,13 @@ export default function Dish2DPlacement() {
     if (!file) return;
 
     try {
+      // ファイルをData URLに変換
       const dataURL = await fileToDataURL(file);
-      setBackgroundImage(dataURL);
+
+      // 3:2の比率にクロップ（横60cm × 縦40cm）
+      const croppedDataURL = await cropToAspectRatio(dataURL, 3, 2);
+
+      setBackgroundImage(croppedDataURL);
     } catch (error) {
       console.error('背景画像の読み込みに失敗しました', error);
     }
@@ -88,14 +115,13 @@ export default function Dish2DPlacement() {
       return;
     }
 
-    const bgDimensions = getBackgroundDimensions();
-    if (!bgDimensions) return;
+    if (!containerDimensions) return;
 
     // 背景の中央に配置
     placeDish2D({
       dishId,
-      x: bgDimensions.offsetX + bgDimensions.width / 2,
-      y: bgDimensions.offsetY + bgDimensions.height / 2,
+      x: containerDimensions.offsetX + containerDimensions.width / 2,
+      y: containerDimensions.offsetY + containerDimensions.height / 2,
       scale: 1.0,
       rotation: 0,
     });
@@ -106,10 +132,17 @@ export default function Dish2DPlacement() {
     const placed = placedDishes2D.find((pd) => pd.dishId === dishId);
     if (!placed) return;
 
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    // マウスのコンテナ内相対座標を計算
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
     setDraggedDishId(dishId);
     setDragOffset({
-      x: e.clientX - placed.x,
-      y: e.clientY - placed.y,
+      x: mouseX - placed.x,
+      y: mouseY - placed.y,
     });
   };
 
@@ -120,8 +153,12 @@ export default function Dish2DPlacement() {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
 
-    const x = e.clientX - rect.left - dragOffset.x;
-    const y = e.clientY - rect.top - dragOffset.y;
+    // マウスのコンテナ内相対座標を計算
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const x = mouseX - dragOffset.x;
+    const y = mouseY - dragOffset.y;
 
     updatePlacedDish2D(draggedDishId, { x, y });
   };
@@ -136,11 +173,18 @@ export default function Dish2DPlacement() {
     const placed = placedDishes2D.find((pd) => pd.dishId === dishId);
     if (!placed) return;
 
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
     const touch = e.touches[0];
+    // タッチのコンテナ内相対座標を計算
+    const touchX = touch.clientX - rect.left;
+    const touchY = touch.clientY - rect.top;
+
     setDraggedDishId(dishId);
     setDragOffset({
-      x: touch.clientX - placed.x,
-      y: touch.clientY - placed.y,
+      x: touchX - placed.x,
+      y: touchY - placed.y,
     });
   };
 
@@ -153,8 +197,12 @@ export default function Dish2DPlacement() {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
 
-    const x = touch.clientX - rect.left - dragOffset.x;
-    const y = touch.clientY - rect.top - dragOffset.y;
+    // タッチのコンテナ内相対座標を計算
+    const touchX = touch.clientX - rect.left;
+    const touchY = touch.clientY - rect.top;
+
+    const x = touchX - dragOffset.x;
+    const y = touchY - dragOffset.y;
 
     updatePlacedDish2D(draggedDishId, { x, y });
   };
@@ -191,19 +239,19 @@ export default function Dish2DPlacement() {
         transform transition-transform duration-300
         ${isSidebarOpen ? 'translate-y-0' : 'translate-y-full'}
         md:transform-none
-        bg-white dark:bg-zinc-900
-        border-r md:border-r border-t md:border-t-0 border-zinc-200 dark:border-zinc-800
+        bg-[#f4f4f4] dark:bg-[#915524]
+        border-r md:border-r border-t md:border-t-0 border-[#c39665] dark:border-[#6f3f1e]
         overflow-y-auto
         max-h-[70vh] md:max-h-none
       `}>
         <div className="p-4 space-y-6">
           {/* 背景画像アップロード */}
           <div>
-            <h3 className="font-semibold text-zinc-900 dark:text-zinc-50 mb-3">
+            <h3 className="font-semibold text-[#6f3f1e] dark:text-[#f4f4f4] mb-3">
               背景画像（机・テーブル）
             </h3>
-            <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <p className="text-xs text-blue-700 dark:text-blue-300">
+            <div className="mb-3 p-3 bg-[#c39665]/20 dark:bg-[#6f3f1e]/40 border border-[#c39665] dark:border-[#6f3f1e] rounded-lg">
+              <p className="text-xs text-[#6f3f1e] dark:text-[#f4f4f4]">
                 背景は <strong>{BACKGROUND_WIDTH_CM} × {BACKGROUND_HEIGHT_CM} cm</strong> として扱われます
               </p>
             </div>
@@ -211,19 +259,19 @@ export default function Dish2DPlacement() {
               type="file"
               accept="image/*"
               onChange={handleBackgroundUpload}
-              className="block w-full text-sm text-zinc-500
+              className="block w-full text-sm text-[#6f3f1e]
                 file:mr-4 file:py-2 file:px-4
                 file:rounded-full file:border-0
                 file:text-sm file:font-semibold
-                file:bg-zinc-900 file:text-white
-                hover:file:bg-zinc-700
-                dark:file:bg-zinc-50 dark:file:text-zinc-900
-                dark:hover:file:bg-zinc-200"
+                file:bg-[#915524] file:text-[#f4f4f4]
+                hover:file:bg-[#6f3f1e]
+                dark:file:bg-[#c39665] dark:file:text-[#6f3f1e]
+                dark:hover:file:bg-[#d8ba9d]"
             />
             {backgroundImage && (
               <button
                 onClick={() => setBackgroundImage(null)}
-                className="mt-2 text-xs text-red-600 dark:text-red-400 hover:underline"
+                className="mt-2 text-xs text-red-700 dark:text-red-400 hover:underline"
               >
                 背景をクリア
               </button>
@@ -232,7 +280,7 @@ export default function Dish2DPlacement() {
 
           {/* 器リスト */}
           <div>
-            <h3 className="font-semibold text-zinc-900 dark:text-zinc-50 mb-3">
+            <h3 className="font-semibold text-[#6f3f1e] dark:text-[#f4f4f4] mb-3">
               配置する器 ({selectedDishObjects.length}個)
             </h3>
             <div className="space-y-2">
@@ -241,39 +289,39 @@ export default function Dish2DPlacement() {
                 return (
                   <div
                     key={dish.id}
-                    className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg"
+                    className="p-3 bg-[#d8ba9d] dark:bg-[#6f3f1e] rounded-lg"
                   >
                     <div className="flex items-center gap-3 mb-2">
                       <img
                         src={dish.processedImage}
                         alt={dish.name}
-                        className="w-12 h-12 object-contain bg-white dark:bg-zinc-900 rounded"
+                        className="w-12 h-12 object-contain bg-white dark:bg-[#915524] rounded"
                       />
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                        <p className="text-sm font-medium text-[#6f3f1e] dark:text-[#f4f4f4]">
                           {dish.name}
                         </p>
-                        <p className="text-xs text-zinc-500">
+                        <p className="text-xs text-[#6f3f1e] dark:text-[#f4f4f4] opacity-80">
                           {dish.widthCm} × {dish.heightCm} cm
                         </p>
                       </div>
                     </div>
                     {isPlaced ? (
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-400">
+                        <div className="flex items-center justify-between text-xs text-[#6f3f1e] dark:text-[#f4f4f4]">
                           <span>スケール:</span>
                           <span>{(placedDishes2D.find(pd => pd.dishId === dish.id)?.scale || 1).toFixed(1)}x</span>
                         </div>
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleScaleChange(dish.id, -0.1)}
-                            className="flex-1 px-2 py-1 text-xs bg-zinc-200 dark:bg-zinc-700 rounded hover:bg-zinc-300 dark:hover:bg-zinc-600"
+                            className="flex-1 px-2 py-1 text-xs bg-[#c39665] dark:bg-[#915524] text-[#f4f4f4] rounded hover:bg-[#915524] dark:hover:bg-[#6f3f1e]"
                           >
                             縮小
                           </button>
                           <button
                             onClick={() => handleScaleChange(dish.id, 0.1)}
-                            className="flex-1 px-2 py-1 text-xs bg-zinc-200 dark:bg-zinc-700 rounded hover:bg-zinc-300 dark:hover:bg-zinc-600"
+                            className="flex-1 px-2 py-1 text-xs bg-[#c39665] dark:bg-[#915524] text-[#f4f4f4] rounded hover:bg-[#915524] dark:hover:bg-[#6f3f1e]"
                           >
                             拡大
                           </button>
@@ -281,13 +329,13 @@ export default function Dish2DPlacement() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleRotate(dish.id, 45)}
-                            className="flex-1 px-2 py-1 text-xs bg-zinc-200 dark:bg-zinc-700 rounded hover:bg-zinc-300 dark:hover:bg-zinc-600"
+                            className="flex-1 px-2 py-1 text-xs bg-[#c39665] dark:bg-[#915524] text-[#f4f4f4] rounded hover:bg-[#915524] dark:hover:bg-[#6f3f1e]"
                           >
                             回転
                           </button>
                           <button
                             onClick={() => removePlacedDish2D(dish.id)}
-                            className="flex-1 px-2 py-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/50"
+                            className="flex-1 px-2 py-1 text-xs bg-red-200 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded hover:bg-red-300 dark:hover:bg-red-900/60"
                           >
                             削除
                           </button>
@@ -296,7 +344,7 @@ export default function Dish2DPlacement() {
                     ) : (
                       <button
                         onClick={() => handleAddDishToCanvas(dish.id)}
-                        className="w-full px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                        className="w-full px-3 py-1 text-sm bg-[#915524] dark:bg-[#c39665] text-[#f4f4f4] dark:text-[#6f3f1e] rounded hover:bg-[#6f3f1e] dark:hover:bg-[#d8ba9d]"
                       >
                         キャンバスに追加
                       </button>
@@ -310,11 +358,11 @@ export default function Dish2DPlacement() {
       </div>
 
       {/* キャンバスエリア */}
-      <div className="flex-1 bg-zinc-100 dark:bg-zinc-950 relative overflow-hidden">
+      <div className="flex-1 bg-[#c39665] dark:bg-[#6f3f1e] relative overflow-hidden">
         {/* モバイル用: サイドバー開閉ボタン */}
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="md:hidden fixed bottom-4 right-4 z-30 bg-blue-600 text-white p-4 rounded-full shadow-lg"
+          className="md:hidden fixed bottom-4 right-4 z-30 bg-[#915524] dark:bg-[#c39665] text-[#f4f4f4] dark:text-[#6f3f1e] p-4 rounded-full shadow-lg"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {isSidebarOpen ? (
@@ -329,17 +377,17 @@ export default function Dish2DPlacement() {
           <div className="flex items-center justify-center h-full">
             <div className="text-center max-w-md p-8">
               <div className="text-6xl mb-4">📷</div>
-              <p className="text-lg text-zinc-700 dark:text-zinc-300 mb-2 font-medium">
+              <p className="text-lg text-[#6f3f1e] dark:text-[#f4f4f4] mb-2 font-medium">
                 背景画像をアップロードしてください
               </p>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+              <p className="text-sm text-[#6f3f1e] dark:text-[#f4f4f4] opacity-80 mb-4">
                 机やテーブルの写真を選択してください
               </p>
-              <div className="text-left bg-zinc-100 dark:bg-zinc-800 rounded-lg p-4 text-sm">
-                <p className="font-medium text-zinc-900 dark:text-zinc-50 mb-2">
+              <div className="text-left bg-[#d8ba9d] dark:bg-[#915524] rounded-lg p-4 text-sm">
+                <p className="font-medium text-[#6f3f1e] dark:text-[#f4f4f4] mb-2">
                   ヒント：
                 </p>
-                <ul className="list-disc list-inside space-y-1 text-zinc-600 dark:text-zinc-400">
+                <ul className="list-disc list-inside space-y-1 text-[#6f3f1e] dark:text-[#f4f4f4]">
                   <li>背景は {BACKGROUND_WIDTH_CM}×{BACKGROUND_HEIGHT_CM}cm として計算されます</li>
                   <li>できるだけ真上から撮影した写真が最適です</li>
                   <li>机全体が映るように撮影してください</li>
@@ -364,21 +412,18 @@ export default function Dish2DPlacement() {
             }}
           >
             {/* 背景サイズ表示 */}
-            <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-2 rounded text-xs backdrop-blur">
+            <div className="absolute top-4 left-4 bg-[#6f3f1e]/80 text-[#f4f4f4] px-3 py-2 rounded text-xs backdrop-blur">
               背景サイズ: {BACKGROUND_WIDTH_CM} × {BACKGROUND_HEIGHT_CM} cm
             </div>
 
             {/* 配置された器 */}
-            {placedDishes2D.map((placed) => {
+            {containerDimensions && placedDishes2D.map((placed) => {
               const dish = dishes.find((d) => d.id === placed.dishId);
               if (!dish) return null;
 
-              const bgDimensions = getBackgroundDimensions();
-              if (!bgDimensions) return null;
-
               // 背景のピクセル/cm比率を使用
-              const widthPx = dish.widthCm * bgDimensions.pixelsPerCm * placed.scale;
-              const heightPx = dish.heightCm * bgDimensions.pixelsPerCm * placed.scale;
+              const widthPx = dish.widthCm * containerDimensions.pixelsPerCm * placed.scale;
+              const heightPx = dish.heightCm * containerDimensions.pixelsPerCm * placed.scale;
 
               return (
                 <div
@@ -401,7 +446,7 @@ export default function Dish2DPlacement() {
                     draggable={false}
                   />
                   {/* 器の情報表示（ホバー時） */}
-                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-[#6f3f1e]/80 text-[#f4f4f4] px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
                     {dish.name} ({dish.widthCm}×{dish.heightCm}cm)
                   </div>
                 </div>

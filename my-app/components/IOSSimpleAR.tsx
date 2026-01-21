@@ -70,11 +70,18 @@ export default function IOSSimpleAR() {
     const placed = placedDishes2D.find((pd) => pd.dishId === dishId);
     if (!placed) return;
 
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
     const touch = e.touches[0];
+    // タッチのコンテナ内相対座標を計算
+    const touchX = touch.clientX - rect.left;
+    const touchY = touch.clientY - rect.top;
+
     setDraggedDishId(dishId);
     setTouchOffset({
-      x: touch.clientX - placed.x,
-      y: touch.clientY - placed.y,
+      x: touchX - placed.x,
+      y: touchY - placed.y,
     });
   };
 
@@ -87,8 +94,12 @@ export default function IOSSimpleAR() {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
 
-    const x = touch.clientX - rect.left - touchOffset.x;
-    const y = touch.clientY - rect.top - touchOffset.y;
+    // タッチのコンテナ内相対座標を計算
+    const touchX = touch.clientX - rect.left;
+    const touchY = touch.clientY - rect.top;
+
+    const x = touchX - touchOffset.x;
+    const y = touchY - touchOffset.y;
 
     updatePlacedDish2D(draggedDishId, { x, y });
   };
@@ -160,7 +171,7 @@ export default function IOSSimpleAR() {
       </div>
 
       {/* UI コントロール */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 pb-safe">
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#6f3f1e]/90 to-transparent p-4 pb-safe">
         {/* 器選択 */}
         <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
           {selectedDishObjects.map((dish) => {
@@ -172,8 +183,8 @@ export default function IOSSimpleAR() {
                 disabled={isPlaced}
                 className={`flex-shrink-0 w-20 h-20 rounded-lg border-2 ${
                   isPlaced
-                    ? 'border-green-500 bg-green-500/20'
-                    : 'border-white/50 bg-black/50 active:bg-white/20'
+                    ? 'border-[#c39665] bg-[#c39665]/30'
+                    : 'border-[#f4f4f4]/50 bg-[#6f3f1e]/50 active:bg-[#f4f4f4]/20'
                 }`}
               >
                 <img
@@ -196,26 +207,26 @@ export default function IOSSimpleAR() {
               return (
                 <div
                   key={placed.dishId}
-                  className="flex items-center gap-2 bg-black/70 rounded-lg p-2"
+                  className="flex items-center gap-2 bg-[#6f3f1e]/80 rounded-lg p-2"
                 >
-                  <span className="text-white text-sm flex-1 truncate">
+                  <span className="text-[#f4f4f4] text-sm flex-1 truncate">
                     {dish.name}
                   </span>
                   <button
                     onClick={() => handleScaleChange(placed.dishId, -0.2)}
-                    className="px-3 py-1 bg-white/20 text-white text-sm rounded active:bg-white/30"
+                    className="px-3 py-1 bg-[#c39665]/60 text-[#f4f4f4] text-sm rounded active:bg-[#c39665]"
                   >
                     縮小
                   </button>
                   <button
                     onClick={() => handleScaleChange(placed.dishId, 0.2)}
-                    className="px-3 py-1 bg-white/20 text-white text-sm rounded active:bg-white/30"
+                    className="px-3 py-1 bg-[#c39665]/60 text-[#f4f4f4] text-sm rounded active:bg-[#c39665]"
                   >
                     拡大
                   </button>
                   <button
                     onClick={() => removePlacedDish2D(placed.dishId)}
-                    className="px-3 py-1 bg-red-500/80 text-white text-sm rounded active:bg-red-500"
+                    className="px-3 py-1 bg-red-600/80 text-[#f4f4f4] text-sm rounded active:bg-red-600"
                   >
                     削除
                   </button>
@@ -228,14 +239,14 @@ export default function IOSSimpleAR() {
 
       {/* エラー表示 */}
       {error && (
-        <div className="absolute top-4 left-4 right-4 bg-red-500/90 text-white p-4 rounded-lg">
+        <div className="absolute top-4 left-4 right-4 bg-red-600/90 text-[#f4f4f4] p-4 rounded-lg">
           <p className="text-sm">{error}</p>
         </div>
       )}
 
       {/* 説明 */}
       {!error && cameraActive && placedDishes2D.length === 0 && (
-        <div className="absolute top-4 left-4 right-4 bg-black/70 text-white p-4 rounded-lg">
+        <div className="absolute top-4 left-4 right-4 bg-[#6f3f1e]/80 text-[#f4f4f4] p-4 rounded-lg">
           <p className="text-sm">
             下のリストから器をタップして配置してください。配置した器はドラッグで移動できます。
           </p>

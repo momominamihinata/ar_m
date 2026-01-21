@@ -3,15 +3,15 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDishStore } from '@/store/dishStore';
-import { fileToDataURL, removeImageBackground, resizeImage } from '@/lib/image-processing';
+import { fileToDataURL, removeImageBackground, resizeImage, trimTransparentPixels } from '@/lib/image-processing';
 
 export default function NewDishPage() {
   const router = useRouter();
   const addDish = useDishStore((state) => state.addDish);
 
   const [name, setName] = useState('');
-  const [widthCm, setWidthCm] = useState(10);
-  const [heightCm, setHeightCm] = useState(10);
+  const [widthCm, setWidthCm] = useState<string>('10');
+  const [heightCm, setHeightCm] = useState<string>('10');
   const [originalImage, setOriginalImage] = useState<string>('');
   const [processedImage, setProcessedImage] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -34,7 +34,10 @@ export default function NewDishPage() {
 
       // 背景除去処理
       const processed = await removeImageBackground(file);
-      setProcessedImage(processed);
+
+      // 透明部分をトリミング（器だけの領域にする）
+      const trimmed = await trimTransparentPixels(processed);
+      setProcessedImage(trimmed);
 
       setIsProcessing(false);
     } catch (err) {
@@ -57,16 +60,20 @@ export default function NewDishPage() {
       return;
     }
 
-    if (widthCm <= 0 || heightCm <= 0) {
-      setError('サイズは0より大きい値を入力してください');
+    // サイズを数値に変換してバリデーション
+    const width = Number(widthCm);
+    const height = Number(heightCm);
+
+    if (isNaN(width) || isNaN(height) || width < 0.1 || height < 0.1) {
+      setError('サイズは0.1以上の数値を入力してください');
       return;
     }
 
     // 器を追加
     addDish({
       name,
-      widthCm,
-      heightCm,
+      widthCm: width,
+      heightCm: height,
       originalImage,
       processedImage,
     });
@@ -76,25 +83,25 @@ export default function NewDishPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black py-8 px-4">
+    <div className="min-h-screen bg-[#d8ba9d] py-8 px-4">
       <div className="max-w-2xl mx-auto">
         <div className="mb-6">
           <button
             onClick={() => router.push('/dishes')}
-            className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+            className="text-[#6f3f1e] hover:text-[#915524]"
           >
             ← 戻る
           </button>
         </div>
 
-        <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 mb-8">
+        <h1 className="text-3xl font-bold text-[#6f3f1e] mb-8">
           器を登録
         </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-6 bg-white dark:bg-zinc-900 rounded-lg p-6 shadow-sm">
+        <form onSubmit={handleSubmit} className="space-y-6 bg-[#f4f4f4] rounded-lg p-6 shadow-sm">
           {/* 画像アップロード */}
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+            <label className="block text-sm font-medium text-[#6f3f1e] mb-2">
               器の写真（真上から撮影）
             </label>
             <input
@@ -102,19 +109,17 @@ export default function NewDishPage() {
               accept="image/*"
               onChange={handleImageUpload}
               disabled={isProcessing}
-              className="block w-full text-sm text-zinc-500
+              className="block w-full text-sm text-[#6f3f1e]
                 file:mr-4 file:py-2 file:px-4
                 file:rounded-full file:border-0
                 file:text-sm file:font-semibold
-                file:bg-zinc-900 file:text-white
-                hover:file:bg-zinc-700
-                dark:file:bg-zinc-50 dark:file:text-zinc-900
-                dark:hover:file:bg-zinc-200
+                file:bg-[#915524] file:text-[#f4f4f4]
+                hover:file:bg-[#6f3f1e]
                 disabled:opacity-50"
             />
 
             {isProcessing && (
-              <p className="mt-2 text-sm text-blue-600 dark:text-blue-400">
+              <p className="mt-2 text-sm text-[#915524]">
                 画像を処理中... （数秒かかる場合があります）
               </p>
             )}
@@ -123,19 +128,19 @@ export default function NewDishPage() {
             {originalImage && processedImage && !isProcessing && (
               <div className="mt-4 grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-zinc-500 mb-1">元画像</p>
+                  <p className="text-xs text-[#6f3f1e] mb-1">元画像</p>
                   <img
                     src={originalImage}
                     alt="元画像"
-                    className="w-full h-40 object-contain bg-zinc-100 dark:bg-zinc-800 rounded"
+                    className="w-full h-40 object-contain bg-[#d8ba9d] rounded"
                   />
                 </div>
                 <div>
-                  <p className="text-xs text-zinc-500 mb-1">背景除去後</p>
+                  <p className="text-xs text-[#6f3f1e] mb-1">背景除去後</p>
                   <img
                     src={processedImage}
                     alt="背景除去後"
-                    className="w-full h-40 object-contain bg-zinc-100 dark:bg-zinc-800 rounded"
+                    className="w-full h-40 object-contain bg-[#d8ba9d] rounded"
                   />
                 </div>
               </div>
@@ -144,7 +149,7 @@ export default function NewDishPage() {
 
           {/* 名前 */}
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+            <label className="block text-sm font-medium text-[#6f3f1e] mb-2">
               器の名前
             </label>
             <input
@@ -152,50 +157,50 @@ export default function NewDishPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="例: 大皿、小鉢、カップ"
-              className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg
-                bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100
-                focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-50 focus:border-transparent"
+              className="w-full px-4 py-2 border border-[#c39665] rounded-lg
+                bg-white text-[#6f3f1e]
+                focus:ring-2 focus:ring-[#915524] focus:border-transparent"
             />
           </div>
 
           {/* サイズ */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+              <label className="block text-sm font-medium text-[#6f3f1e] mb-2">
                 横幅（cm）
               </label>
               <input
                 type="number"
                 value={widthCm}
-                onChange={(e) => setWidthCm(Number(e.target.value))}
+                onChange={(e) => setWidthCm(e.target.value)}
                 min="0.1"
                 step="0.1"
-                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg
-                  bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100
-                  focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-50 focus:border-transparent"
+                className="w-full px-4 py-2 border border-[#c39665] rounded-lg
+                  bg-white text-[#6f3f1e]
+                  focus:ring-2 focus:ring-[#915524] focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+              <label className="block text-sm font-medium text-[#6f3f1e] mb-2">
                 縦幅（cm）
               </label>
               <input
                 type="number"
                 value={heightCm}
-                onChange={(e) => setHeightCm(Number(e.target.value))}
+                onChange={(e) => setHeightCm(e.target.value)}
                 min="0.1"
                 step="0.1"
-                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg
-                  bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100
-                  focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-50 focus:border-transparent"
+                className="w-full px-4 py-2 border border-[#c39665] rounded-lg
+                  bg-white text-[#6f3f1e]
+                  focus:ring-2 focus:ring-[#915524] focus:border-transparent"
               />
             </div>
           </div>
 
           {/* エラーメッセージ */}
           {error && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            <div className="p-3 bg-red-100 border border-red-300 rounded-lg">
+              <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
 
@@ -203,8 +208,8 @@ export default function NewDishPage() {
           <button
             type="submit"
             disabled={isProcessing}
-            className="w-full py-3 bg-zinc-900 dark:bg-zinc-50 text-white dark:text-zinc-900
-              font-medium rounded-lg hover:bg-zinc-700 dark:hover:bg-zinc-200
+            className="w-full py-3 bg-[#915524] text-[#f4f4f4]
+              font-medium rounded-lg hover:bg-[#6f3f1e]
               disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             登録する
