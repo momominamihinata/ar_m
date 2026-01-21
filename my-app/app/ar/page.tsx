@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { Suspense, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDishStore } from '@/store/dishStore';
 import Dish2DPlacement from '@/components/Dish2DPlacement';
 import IOSSimpleAR from '@/components/IOSSimpleAR';
 import { isIOS } from '@/lib/device-detection';
 
-export default function ARPage() {
+function ARPageContent() {
   const router = useRouter();
   const { selectedDishes } = useDishStore();
   const searchParams = useSearchParams();
@@ -71,4 +71,16 @@ export default function ARPage() {
       </div>
     );
   }
+}
+
+export default function ARPage() {
+  return (
+    <Suspense fallback={
+      <div className="h-screen flex items-center justify-center bg-[#d8ba9d]">
+        <div className="text-[#6f3f1e]">読み込み中...</div>
+      </div>
+    }>
+      <ARPageContent />
+    </Suspense>
+  );
 }
