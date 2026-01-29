@@ -24,4 +24,5 @@ export interface PlacedDish2D {
   y: number;        // Y座標（px）
   scale: number;    // スケール倍率（1.0 = 実寸）
   rotation: number; // 回転角度（度）
+  zIndex: number;   // 重なり順（大きいほど前面）
 }

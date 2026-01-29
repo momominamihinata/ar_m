@@ -61,6 +61,7 @@ export default function IOSSimpleAR() {
       y: containerHeight / 2,
       scale: 1.0,
       rotation: 0,
+      zIndex: 0, // ストア側で自動的に適切な値に設定される
     });
   };
 

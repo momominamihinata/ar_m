@@ -14,6 +14,10 @@ export default function Dish2DPlacement() {
     placeDish2D,
     updatePlacedDish2D,
     removePlacedDish2D,
+    bringToFront,
+    sendToBack,
+    bringForward,
+    sendBackward,
   } = useDishStore();
 
   const [draggedDishId, setDraggedDishId] = useState<string | null>(null);
@@ -124,6 +128,7 @@ export default function Dish2DPlacement() {
       y: containerDimensions.offsetY + containerDimensions.height / 2,
       scale: 1.0,
       rotation: 0,
+      zIndex: 0, // ストア側で自動的に適切な値に設定される
     });
   };
 
@@ -338,6 +343,40 @@ export default function Dish2DPlacement() {
                             削除
                           </button>
                         </div>
+                        {/* 重なり順操作 */}
+                        <div className="pt-2 border-t border-[#c39665]">
+                          <p className="text-xs text-[#6f3f1e] mb-1 font-medium">重なり順:</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => bringToFront(dish.id)}
+                              className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                              title="最前面に移動"
+                            >
+                              最前面
+                            </button>
+                            <button
+                              onClick={() => sendToBack(dish.id)}
+                              className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                              title="最背面に移動"
+                            >
+                              最背面
+                            </button>
+                            <button
+                              onClick={() => bringForward(dish.id)}
+                              className="px-2 py-1 text-xs bg-blue-400 text-white rounded hover:bg-blue-500"
+                              title="1つ前に移動"
+                            >
+                              前へ
+                            </button>
+                            <button
+                              onClick={() => sendBackward(dish.id)}
+                              className="px-2 py-1 text-xs bg-blue-400 text-white rounded hover:bg-blue-500"
+                              title="1つ後ろに移動"
+                            >
+                              後ろへ
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <button
@@ -433,6 +472,7 @@ export default function Dish2DPlacement() {
                     transform: `translate(-50%, -50%) rotate(${placed.rotation}deg)`,
                     width: widthPx,
                     height: heightPx,
+                    zIndex: placed.zIndex, // 重なり順を適用
                   }}
                   onMouseDown={(e) => handleDragStart(e, placed.dishId)}
                   onTouchStart={(e) => handleTouchStart(e, placed.dishId)}

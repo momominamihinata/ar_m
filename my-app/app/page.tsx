@@ -47,10 +47,25 @@ export default function Home() {
         </div>
 
         {/* アクションボタン */}
-        <div className="grid grid-cols-1 gap-6 max-w-xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <Link
+            href="/dishes"
+            className="group bg-[#915524] text-[#f4f4f4]
+              rounded-lg p-8 shadow-sm hover:shadow-md transition-all"
+          >
+            <div className="text-4xl mb-4">📋</div>
+            <h3 className="text-xl font-semibold mb-2">マイ器リスト</h3>
+            <p className="text-sm opacity-90">
+              登録済みの器を確認・配置する
+            </p>
+            <div className="mt-4 text-sm font-medium group-hover:translate-x-1 transition-transform">
+              見る →
+            </div>
+          </Link>
+
           <Link
             href="/dishes/new"
-            className="group bg-[#915524] text-[#f4f4f4]
+            className="group bg-[#6f3f1e] text-[#f4f4f4]
               rounded-lg p-8 shadow-sm hover:shadow-md transition-all"
           >
             <div className="text-4xl mb-4">📸</div>
